@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+This tool describes the pre-processesing JSON schema.
+It can also be used to validate a pre-processesing JSON file.
+"""
+
+import argparse
+import sys
+
+from makaniino.data_preprocess.runner import PreProcessingRunner
+from makaniino.logger_config import getLogger
+from makaniino.schema_description import SchemaDescription
+
+logger = getLogger(__name__)
+
+if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser_group = parser.add_mutually_exclusive_group(required=True)
+    parser_group.add_argument('-v', '--validate',
+                              type=str,
+                              help="Validates a pre-process configuration file",
+                              metavar='FILENAME')
+
+    parser_group.add_argument('-s', "--show",
+                              help="Show the description of the pre-process configuration",
+                              action="store_true")
+    
+    # print the help if no arguments are passed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+
+    if args.show:
+        schema_description = SchemaDescription.from_path(PreProcessingRunner.schema_json)
+        logger.info(str(schema_description))
+    elif args.validate:
+        try:
+            PreProcessingRunner.from_json_path(args.validate)
+        except Exception as e:
+            logger.fatal(e)
+            sys.exit(1)
+

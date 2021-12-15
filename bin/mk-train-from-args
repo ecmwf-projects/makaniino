@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+This tool performs model training from a list of
+components and CL arguments.
+"""
+
+import argparse
+import json
+import os
+
+from makaniino.configurable import Configurable
+from makaniino.configuration import Configuration
+from makaniino.logger_config import *
+
+logger = getLogger(__name__)
+
+
+if __name__ == "__main__":
+    
+    # read the input config
+    with open("makaniino-components.json", "r") as f:
+        config_json = json.load(f)
+        
+    print("\n********* CHOSEN COMPONENTS *********")
+    print(json.dumps(config_json, indent=4))
+    print("***************************************\n")
+        
+    chosen_config = Configuration.from_classes_json(config_json)
+    
+    # Actual parser that shows the full help page
+    formatter = lambda prog: argparse.HelpFormatter(prog, max_help_position=50)
+    parser = argparse.ArgumentParser(formatter_class=formatter)
+    default_params = chosen_config.get_all_default_params()
+    
+    # build the list of params from all the configurables
+    for k, v in default_params.items():
+        parser.add_argument('--' + k,
+                            dest=k,
+                            default=v[0],
+                            help=f"{v[1]}, [{v[0]}]",
+                            type=Configurable.config_type(v[0]) if len(v) < 3 else v[2])
+
+    # add option for log path
+    parser.add_argument('--log_file', help=f"Path to log file",
+                        default=os.path.join(os.getcwd(), "makaniino.log"),
+                        type=str)
+    
+    parser.add_argument('--save_config', help=f"Path to config file",
+                        default=os.path.join(os.getcwd(), "makaniino.config"),
+                        type=str)
+        
+    args = parser.parse_args()
+
+    # Make sure log dir exists
+    log_dir = os.path.dirname(args.log_file)
+    if not os.path.exists(log_dir):
+        os.mkdir(log_dir)
+        
+    # write to log file
+    fh = logging.FileHandler(args.log_file, mode='w')
+    fh.setFormatter(logging.Formatter(logging_format))
+    fh.setLevel(logging.INFO)
+    root_logger.addHandler(fh)
+    
+    # instantiate all configurables in the configuration
+    # with the user-supplied args
+    chosen_config.configure_all(args)
+    
+    # log user params
+    logger.info("\n\n******** FULL CONFIGURATION **********\n")
+    logger.info(chosen_config.to_string())
+    logger.info("\n\n**************************************\n\n")
+    
+    # Make sure config directory exists
+    config_dir = os.path.dirname(args.save_config)
+    if not os.path.exists(config_dir):
+        os.mkdir(config_dir)
+        
+    # Write to config file
+    chosen_config.to_file(args.save_config)
+    
+    # build and train the model
+    model = chosen_config.get_configurable("model")
+    model.build()
+    model.summary()
+
+    # train the model
+    data_handler = chosen_config.get_configurable("data_handler")
+    trainer = chosen_config.get_configurable("trainer")
+    model.train(trainer, data_handler)

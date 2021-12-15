@@ -1,0 +1,19 @@
+# Install Cyclone
+
+Move to the project root directory
+> cd makaniino
+
+Create a conda environment with all the dependencies  
+> conda env create -n makaniino_env -f conda_deps.yml
+
+Install this package
+> conda activate makaniino_env
+> 
+> pip install -e .
+ 
+Test the installation
+> conda activate makaniino_env
+> 
+> tc-version
+
+Upon correct installation, the code version is printed.

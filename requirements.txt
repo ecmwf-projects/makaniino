@@ -1,0 +1,12 @@
+packaging==21.0
+numpy==1.19.5
+zarr==2.10.2
+mpi4py==3.1.1
+keras==2.6.0
+tensorflow==2.6.0
+horovod==0.23.0
+matplotlib==3.4.3
+jsonschema==4.1.2
+climetlab==0.8.31
+jupyter==1.0.0
+scikit-learn==1.0.1

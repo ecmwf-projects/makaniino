@@ -1,0 +1,121 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+Development tool: Check a ZARR Dataset by retrieving some data
+"""
+
+import argparse
+import os
+import sys
+
+from makaniino.data_handling.datasets.zarr import CycloneDatasetZARR
+from makaniino.logger_config import getLogger
+from makaniino.utils.plot_utils import plot_sample
+
+logger = getLogger(__name__)
+
+
+if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    
+    parser.add_argument('-i', '--dataset_path',
+                        help="Path of the data zarr archive")
+
+    parser.add_argument('-x', '--print_extras',
+                        action="store_true",
+                        help="Print dataset dates")
+    
+    parser.add_argument('-p', '--n_plots',
+                        default=0,
+                        type=int,
+                        help="N of sample plots to generate")
+    
+    parser.add_argument('-s', '--shuffle',
+                        action="store_true",
+                        help="Shuffle dataset samples")
+
+    parser.add_argument('-t', '--tag',
+                        default="dataset_check",
+                        help="Plot tag")
+
+    parser.add_argument('-o', '--out_path',
+                        default=os.path.join(os.getcwd(), "plots"),
+                        help="Path where the output figure is saved")
+    
+    parser.add_argument('-sr', '--serve',
+                        default="time",
+                        help="Comma separated variable names to be served from ds (e.g.: time,points)")
+    
+    # print the help if no arguments are passed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+    
+    # make sure that the output dir exists
+    if not os.path.isdir(args.out_path):
+        os.mkdir(args.out_path)
+
+    # open the database
+    requested_vars = args.serve.split(",")
+    ds = CycloneDatasetZARR(args.dataset_path)
+    ds = ds.batch(1).serve(requested_vars)
+        
+    ds.open()
+
+    # ################## print variables as requested ######################
+    if args.print_extras:
+        ds_it = iter(ds)
+        for cc in range(ds.length):
+            vars_ = next(ds_it)
+            print(f"\n------- Sample {cc}")
+            
+            for vv, var in enumerate(vars_):
+                print(f"{requested_vars[vv]} has shape: {var.shape}:\n{var}")
+                
+    ds.close()
+
+    # ####################### make plots if required #######################
+    if args.n_plots:
+    
+        # re-open the database and serve train, test and time
+        ds = CycloneDatasetZARR(args.dataset_path)
+        ds = ds.batch(1).serve(["train", "test", "time"])
+        if args.shuffle:
+            ds = ds.shuffle()
+        ds.open()
+        
+        ds_it = iter(ds)
+        for sample_id in range(args.n_plots):
+    
+            (x_data, y_data, time) = next(ds_it)
+
+            time_str = time.squeeze()
+            print(f"Plotting sample at {time_str}")
+
+            for ifield in range(x_data.shape[-1]):
+                plot_sample(x_data[0, :, :, :],
+                            y_data[0, :, :, 0],
+                            channel_idx=ifield,
+                            output_dir=args.out_path,
+                            title=f"{args.tag}_{sample_id}_{time_str}_ch:{ifield}")
+        ds.close()
+
+    # ##################### summary ######################
+    print("\n***** SUMMARY *****")
+    print(f"Dataset in {args.dataset_path} has {ds.length} samples")
+    print("*** END SUMMARY ***\n")
+
+    print("All done.")

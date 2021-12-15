@@ -1,0 +1,5 @@
+{
+ "model": "unet_model",
+ "data_handler": "data_handler_zarr",
+ "trainer": "trainer_serial"
+}

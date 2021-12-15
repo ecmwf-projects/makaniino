@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+This tool performs model training from a configuration file.
+"""
+
+import argparse
+import sys
+
+from makaniino.configuration import Configuration
+from makaniino.logger_config import *
+
+logger = getLogger(__name__)
+
+if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("json_config", help=f"Path of the download config file")
+    
+    # print the help if no arguments are passed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+    
+    args = parser.parse_args()
+    
+    chosen_config = Configuration.from_file(args.json_config)
+
+    # build the model
+    model = chosen_config.get_configurable("model")
+    model.build()
+    model.summary()
+
+    # train the model
+    data_handler = chosen_config.get_configurable("data_handler")
+    trainer = chosen_config.get_configurable("trainer")
+    model.train(trainer, data_handler)

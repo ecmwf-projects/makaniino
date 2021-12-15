@@ -1,0 +1,221 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+Development tool: Uses a ML model to make a prediction
+"""
+
+import argparse
+import os
+import sys
+
+from makaniino.configuration import Configuration
+from makaniino.cyclone_localizers.factory import cyclone_localizer_factory
+from makaniino.data_handling.datasets.zarr import CycloneDatasetZARR
+from makaniino.data_handling.online_processing import (
+    DataNormalizer,
+    DataRecaster,
+    EdgeTrimmer,
+    NANSwapper,
+)
+from makaniino.utils.generic_utils import (
+    latlon_2_pixel,
+    npstring_to_numpy,
+    pixel_2_latlon,
+)
+from makaniino.utils.plot_utils import plot_prediction
+
+if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    
+    parser.add_argument('-n', '--name',
+                        required=True,
+                        help="Name of model without suffix")
+    
+    parser.add_argument('-c', '--config_path',
+                        default=os.path.join(os.getcwd(), "logs"),
+                        help="Path where the model config JSON is saved")
+    
+    parser.add_argument('-w', '--weights',
+                        help="Path of the weights file")
+    
+    parser.add_argument('-d', '--data_path',
+                        help="Path of the data to run predictions on")
+    
+    parser.add_argument('-np', '--number_predicitons',
+                        default=5,
+                        type=int,
+                        help="Number of predictions")
+    
+    parser.add_argument('-out', '--out_path',
+                        default=os.path.join(os.getcwd(), "predictions"),
+                        help="Path where the output figure is saved")
+    
+    parser.add_argument('-td', '--twod_only',
+                        action="store_true",
+                        help="if only 2D plots are needed")
+
+    parser.add_argument('-fc', '--find_centers',
+                        default="none",
+                        help="Search for makaniino centers in the prediciton map",
+                        choices=["none", "dbscan", "kmeans"])
+    
+    parser.add_argument('-pl', '--plot_limits',
+                        type=str,
+                        help="Limits for the plots (comma separated string xmin,xmax,ymin,ymax)")
+
+    parser.add_argument('-pc', '--plot_channels',
+                        type=str,
+                        help="Plots only selected channels (comma separated string)")
+    
+    parser.add_argument('--vmin',
+                        type=str,
+                        help="Lower value of the colormap")
+    
+    parser.add_argument('--vmax',
+                        type=str,
+                        help="Higher value of the colormap")
+
+    parser.add_argument('--shuffle',
+                        help="Shuffle data",
+                        action="store_true")
+
+    # print the help if no arguments are passed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+    
+    # Resurrect the configuration from config JSON file
+    conf = Configuration.from_file(os.path.join(args.config_path, args.name + ".config"))
+    print(conf.to_string())
+    
+    # Resurrect model and data-handler
+    model = conf.get_configurable("model")
+    data_handler = conf.get_configurable("data_handler")
+    
+    # set test data path
+    data_handler.set_param("test_data_path", args.data_path)
+    
+    # this is a quick and dirty workaround but there should be
+    # a more thorough thinking about lazy building of configurables
+    data_handler.reset_data_path(args.data_path, "testing")
+    
+    print(f"data path {data_handler.get_param('test_data_path')}")
+    
+    # re-build the model
+    model.build()
+    
+    # load weights from file
+    model.load_weights_from_file(args.weights)
+    
+    # make sure that the output dir exists
+    if not os.path.isdir(args.out_path):
+        os.mkdir(args.out_path)
+
+    ds = CycloneDatasetZARR(args.data_path)
+    ds = ds.batch(1).serve(["train", "test", "time", "points"])
+    ds = ds.shuffle(args.shuffle)
+
+    x_cut_pxl = data_handler.get_param("x_cut_pxl")
+    y_cut_pxl = data_handler.get_param("y_cut_pxl")
+    norm_factor = data_handler.get_param("norm_factor")
+    shift_factor = data_handler.get_param("shift_factor")
+    dataset_output_type = data_handler.get_param('dataset_output_type')
+    
+    ds = ds.set_online_processors([
+        EdgeTrimmer(x_cut_pxl=x_cut_pxl, y_cut_pxl=y_cut_pxl),
+        DataNormalizer(norm_factor=norm_factor, shift_factor=shift_factor),
+        DataRecaster(y_type=dataset_output_type),
+        NANSwapper()
+    ])
+    ds.open()
+    
+    # set plot limits and plot channels
+    plot_limits = [int(ll) for ll in args.plot_limits.split(",")] if args.plot_limits else None
+    
+    data_hdl_it = iter(ds)
+    for i_sample in range(args.number_predicitons):
+        
+        (x_data, y_data, _time, _points) = next(data_hdl_it)
+        time_str = _time[0, 0].replace(" ", "_").replace(":", "_")
+
+        print(f"Generating prediction {i_sample} for date: {time_str}")
+        
+        y_predicted = model.predict(x_data)
+        
+        # find makaniino centers by k-means (always in full image)
+        cyc_coords_pxl_pred = None
+        if args.find_centers != "none":
+            finder = cyclone_localizer_factory[args.find_centers](y_predicted[0, :, :, 0])
+            cyc_coords_pxl_pred = finder.find()
+            
+        # if predicted makaniino centers are found, use them
+        if cyc_coords_pxl_pred is not None:
+            cyc_coords_latlon_pred = pixel_2_latlon(cyc_coords_pxl_pred,
+                                                    y_predicted.shape,
+                                                    data_handler.get_param("x_cut_pxl"),
+                                                    data_handler.get_param("y_cut_pxl")
+                                                    )
+            print(f"Predicted cyclones: \n{cyc_coords_latlon_pred}")
+        else:
+            cyc_coords_latlon_pred = None
+
+        # real makaniino coordinates
+        cyc_coords_latlon_real = npstring_to_numpy(_points)
+
+        # convert real makaniino centers
+        cyc_coords_pxl_real = latlon_2_pixel(cyc_coords_latlon_real,
+                                             y_predicted.shape,
+                                             data_handler.get_param("x_cut_pxl"),
+                                             data_handler.get_param("y_cut_pxl")
+                                             )
+        
+        # a different plot for each input channel..
+        if args.plot_channels:
+            plot_channels = [int(ll) for ll in args.plot_channels.split(",")]
+        else:
+            plot_channels = range(x_data.shape[-1])
+        
+        for ich in plot_channels:
+            
+            plot_prediction(x_data[0, :, :, ich],
+                            y_predicted[0, :, :, 0],
+                            y_data[0, :, :, 0],
+                            cyc_coords_pxl_pred=cyc_coords_pxl_pred,
+                            cyc_coords_latlon_pred=cyc_coords_latlon_pred,
+                            cyc_coords_pxl_real=cyc_coords_pxl_real,
+                            cyc_coords_latlon_real=cyc_coords_latlon_real,
+                            output_dir=args.out_path,
+                            title=args.name + f"_sample_{time_str}_ch_{ich}",
+                            twod_only=args.twod_only,
+                            plot_limits=None,
+                            vmin=args.vmin,
+                            vmax=args.vmax
+                            )
+            
+            if plot_limits:
+                plot_prediction(x_data[0, :, :, ich],
+                                y_predicted[0, :, :, 0],
+                                y_data[0, :, :, 0],
+                                cyc_coords_pxl_pred=cyc_coords_pxl_pred,
+                                cyc_coords_latlon_pred=cyc_coords_latlon_pred,
+                                cyc_coords_pxl_real=cyc_coords_pxl_real,
+                                cyc_coords_latlon_real=cyc_coords_latlon_real,
+                                output_dir=args.out_path,
+                                title=args.name + f"_sample_{time_str}_ch_{ich}_zoomed",
+                                twod_only=args.twod_only,
+                                plot_limits=plot_limits
+                                )
+    ds.close()

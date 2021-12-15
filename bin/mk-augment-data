@@ -1,0 +1,114 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+Development tool: Applies a data-augmentation strategy to a dataset.
+A dataset can be augmented in various ways (for example, extracting
+"crops" or sub-areas from each data sample, etc..).
+"""
+
+import argparse
+import sys
+
+from makaniino.data_augmentation.factory import data_augmenter_factory
+from makaniino.data_handling.datasets.zarr import CycloneDatasetZARR
+from makaniino.data_handling.online_processing import EdgeTrimmer
+from makaniino.logger_config import getLogger
+from makaniino.tracks_sources.tracks_factory import tracks_factory
+
+logger = getLogger(__name__)
+
+
+if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    
+    parser.add_argument('data_path',
+                        help="Path of the dataset to be augmented")
+
+    parser.add_argument('out_path',
+                        help="Path of the output dataset")
+
+    parser.add_argument('--tracks_source_type',
+                        help="Type of yclone tracks information",
+                        choices=tracks_factory.keys())
+    
+    parser.add_argument('--lat_cut_pxl',
+                        help="Latitude edge cuts (in pixels)",
+                        type=int,
+                        default=0)
+    
+    parser.add_argument('--lon_cut_pxl',
+                        help="Longitude edge cuts (in pixels)",
+                        type=int,
+                        default=0)
+    
+    parser.add_argument('--chunk_size_ds',
+                        help="Database internal chunk size",
+                        type=int)
+    
+    parser.add_argument('--tracks_source_path',
+                        help="Path of a file containing makaniino tracks information")
+
+    parser.add_argument('--tracks_source_process',
+                        help="If the tracks file is in raw format and needs processing",
+                        action="store_true")
+
+    parser.add_argument('-t', '--type',
+                        default="simple_splitter",
+                        choices=data_augmenter_factory.keys(),
+                        help="Type of data-augmentation technique")
+
+    parser.add_argument('-w', '--workers',
+                        default=1,
+                        type=int,
+                        help="N of workers")
+
+    parser.add_argument('-ff', '--flush_every',
+                        type=int,
+                        help="Flush on disk every <N> samples")
+    
+    # print the help if no arguments are passed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+    
+    args = parser.parse_args()
+    
+    # open the ds in path
+    dataset = CycloneDatasetZARR(args.data_path)
+    dataset = dataset.set_online_processors([
+        EdgeTrimmer(x_cut_pxl=args.lat_cut_pxl,
+                    y_cut_pxl=args.lon_cut_pxl),
+    ])
+    
+    # makaniino tracks (if requested)
+    if args.tracks_source_type:
+        tracks_cls = tracks_factory[args.tracks_source_type]
+        
+        if args.tracks_source_process:
+            tracks_source = tracks_cls.from_file(args.tracks_source_path)
+        else:
+            tracks_source = tracks_cls.read(args.tracks_source_path)
+    else:
+        tracks_source = None
+    
+    # the data augmenter
+    aug_cls = data_augmenter_factory[args.type]
+    da = aug_cls(dataset,
+                 args.out_path,
+                 tracks_source=tracks_source,
+                 chunk_size_ds=args.chunk_size_ds)
+    
+    # run the data augmentation
+    da.run(workers=args.workers,
+           flush_every=args.flush_every)

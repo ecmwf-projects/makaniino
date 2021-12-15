@@ -1,0 +1,86 @@
+{
+  "type": "object",
+  "description": "Schema for Cyclone pre-processing",
+  "properties": {
+    "datasets": {
+      "type": "array",
+      "description": "List of datasets to write",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Pre-process task name"
+          },
+          "pre_processor": {
+            "type": "string",
+            "description": "Type of pre-processor [default,tc_classes]"
+          },
+          "output_dir": {
+            "type": "string",
+            "description": "Output path"
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Start date (e.g. 2019-06-01)"
+          },
+          "end_date": {
+            "type": "string",
+            "description": "End date (e.g. 2019-06-30)"
+          },
+          "include_latlon": {
+            "type": "boolean",
+            "description": "If include Lat/lon fields in the input tensor"
+          },
+          "ibtracks_path": {
+            "type": "string",
+            "description": "Path to IB-Tracks file"
+          },
+          "tracks_source_tag": {
+            "type": "string",
+            "description": "Which source track to use"
+          },
+          "process_ibtracks": {
+            "type": "boolean",
+            "description": "If tracks file needs pre-processing"
+          },
+          "center_mark": {
+            "type": "integer",
+            "description": "Size of label in the ground truth field (in pixels)"
+          },
+          "labelling_method": {
+            "type": "string",
+            "description": "Labelling methodology [cone,square,sine,circle]"
+          },
+          "n_processes": {
+            "type": "integer",
+            "description": "N processors"
+          },
+          "chunk_size": {
+            "type": "integer",
+            "description": "Dataset chunk size"
+          },
+          "source_data": {
+            "type": "object",
+            "description": "Data-download configuration",
+              "properties": {
+                "config_path": {
+                  "type": "string",
+                  "description": "Path of the download configuration file used to fetch the data"
+                },
+                "requested_vars": {
+                  "type": "array",
+                  "description": "Downloaded variables to be processed",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+             }
+          }
+        },
+          "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

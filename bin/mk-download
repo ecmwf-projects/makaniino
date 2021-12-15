@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+import argparse
+
+from makaniino.data_preprocess.source_data import SourceData
+from makaniino.logger_config import getLogger
+
+logger = getLogger(__name__)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument("json_config", help=f"Path of the download config file")
+    
+    args = parser.parse_args()
+    
+    hdl = SourceData.from_json_path(args.json_config)
+    hdl.run_requests()

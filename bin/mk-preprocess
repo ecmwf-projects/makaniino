@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+This tool pre-processes data for machine learning model training
+"""
+
+import argparse
+import sys
+
+from makaniino.data_preprocess.runner import PreProcessingRunner
+from makaniino.logger_config import getLogger
+
+logger = getLogger(__name__)
+
+
+if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("json_config", help=f"Path of the download config file")
+
+    # print the help if no arguments are passed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+        
+    args = parser.parse_args()
+    
+    pre_process_runner = PreProcessingRunner.from_json_path(args.json_config)
+    pre_process_runner.run_preprocessing()

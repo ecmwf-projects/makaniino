@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+Saves a model in keras format
+"""
+
+import argparse
+import os
+import sys
+
+from makaniino.configuration import Configuration
+
+if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    
+    parser.add_argument('config_file', help="Path to model config file")
+    parser.add_argument('weights', help="Path of the weights file")
+    parser.add_argument('-out', '--out_path',
+                        default=os.path.join(os.getcwd(), "output_keras"),
+                        help="Path to output keras model")
+
+    # print the help if no arguments are passed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+    
+    # Resurrect the configuration from JSON file
+    conf = Configuration.from_file(args.config_file)
+    model = conf.get_configurable("model")
+    model.build()
+    
+    # load weights from file
+    model.load_weights_from_file(args.weights)
+
+    model.model.summary()
+    model.model.save(args.out_path)
+    

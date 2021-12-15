@@ -1,0 +1,23 @@
+{
+  "datasets": [
+    {
+      "name": "test-dataset",
+      "pre_processor": "default",
+      "output_dir": "default_output_dir",
+      "source_data": {
+        "config_path": "default_config_path",
+        "requested_vars": ["tcw"]
+      },
+      "start_date": "2019-06-01",
+      "end_date": "2019-06-30",
+      "include_latlon": false,
+      "ibtracks_path": "default_ibtracks_path",
+      "tracks_source_tag": "ibtracks",
+      "process_ibtracks": false,
+      "center_mark": 25,
+      "labelling_method": "sine",
+      "n_processes": 4,
+      "chunk_size": 10
+    }
+  ]
+}

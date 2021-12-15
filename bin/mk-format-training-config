@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+This tool describes the train JSON schema. Note that
+the schema depends on the high-level components selected.
+"""
+
+import argparse
+import json
+import sys
+
+from makaniino import components_config_blocks, components_flat_list
+from makaniino.logger_config import *
+
+logger = getLogger(__name__)
+
+
+if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser_group = parser.add_mutually_exclusive_group(required=True)
+    parser_group.add_argument('-v', '--validate',
+                              type=str,
+                              help="Validates a train configuration file",
+                              metavar='FILENAME')
+    
+    parser_group.add_argument('-s', "--show",
+                              help="Show the available components",
+                              action="store_true")
+    
+    parser_group.add_argument('-sc', "--show-component",
+                              type=str,
+                              help="Show the parameters of a single component")
+
+    # print the help if no arguments are passed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+    
+    # Show available configurables
+    if args.show:
+        print("\nAvailable Components:")
+        print(json.dumps(components_flat_list, indent=4))
+    elif args.show_component:
+        print(f"\nConfiguration of {args.show_component}:\n")
+        print(json.dumps(components_config_blocks[args.show_component], indent=4))

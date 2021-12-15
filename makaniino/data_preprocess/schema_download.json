@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "description": "Schema for Cyclone data downloading",
+  "properties": {
+    "metadata":{
+      "type": "object",
+      "description": "Download metadata",
+      "properties": {
+        "cache_path": {
+          "type": "string",
+          "description": " Path to CliMetLab cache"
+        }
+      },
+      "additionalProperties": false
+    },
+    "requests": {
+      "type": "array",
+      "description": " Array of requests of data (served by CliMetLab)",
+      "additionalProperties": false,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Request name"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source to fetch data from [cds,mars,cds_grid025]"
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Start date (e.g. 2019-06-01)"
+          },
+          "end_date": {
+            "type": "string",
+            "description": "End date (e.g. 2019-06-30)"
+          },
+          "var_name": {
+            "type": "string",
+            "description": "Name of the variable to fetch (e.g. tcw)"
+          },
+          "cds_database": {
+            "type": "string",
+            "description": "Database name (e.g. 'reanalysis-era5-single-levels')"
+          },
+          "product_type": {
+            "type": "string",
+            "description": "Product type (e.g. 'reanalysis')"
+          }
+        },
+       "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

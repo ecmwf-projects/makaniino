@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+#
+# (C) Copyright 2000- NOAA.
+#
+# (C) Copyright 2000- ECMWF.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+"""
+Evaluate a model according to a score
+"""
+
+import argparse
+import os
+import sys
+
+from makaniino.configuration import Configuration
+from makaniino.cyclone_localizers.factory import cyclone_localizer_factory
+from makaniino.model_evaluation.evaluator import Evaluator
+from makaniino.model_evaluation.factory import factory
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+
+    parser.add_argument('-n', '--name',
+                        required=True,
+                        help="Name of model without suffix")
+
+    parser.add_argument('-c', '--config_path',
+                        default=os.path.join(os.getcwd(), "logs"),
+                        help="Path where the model config JSON is saved")
+
+    parser.add_argument('-w', '--weights',
+                        help="Path of the weights file")
+
+    parser.add_argument('-d', '--data_path',
+                        help="Path of the data to run predictions on")
+
+    parser.add_argument('-s', '--score_type',
+                        help="Model score type")
+
+    parser.add_argument('-v', '--n_evals',
+                        help="N of evaluations",
+                        type=int)
+    
+    parser.add_argument('-l', '--localizer',
+                        help="N of evaluations",
+                        choices=list(cyclone_localizer_factory.keys()),
+                        default="dbscan")
+    
+    parser.add_argument('--shuffle',
+                        help="Shuffle data",
+                        action="store_true")
+    
+    parser.add_argument('--debug',
+                        help="debug flag, if set, it saves a picture "
+                             "for each prediction in the working directory",
+                        action="store_true")
+
+    # print the help if no arguments are passed
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+
+    config_file = os.path.join(args.config_path, args.name + ".config")
+    model_config = Configuration.from_file(config_file)
+
+    # scorers
+    scorers_str = args.score_type.split(",")
+    scorers = [factory[scorer_str]() for scorer_str in scorers_str]
+    
+    # evaluate model
+    evaluator = Evaluator(model_config, args.weights,
+                          debug=args.debug)
+    
+    scores = evaluator.evaluate(scorers, args.data_path,
+                                n_evals=args.n_evals,
+                                cyclone_localizer=args.localizer,
+                                shuffle=args.shuffle)
+
+    print(f"\n{'*' * 30}")
+    for name, score in zip(scorers, scores):
+        print(f"{name}: {score}")

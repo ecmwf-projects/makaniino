@@ -1,0 +1,16 @@
+{ 
+  "metadata":{
+    "cache_path": "default_cache_path"
+  },
+  "requests": [
+    {
+      "name": "req_tcw",
+      "source": "cds",
+      "start_date": "2019-06-01",
+      "end_date": "2019-06-30",
+      "var_name": "tcw",
+      "cds_database": "reanalysis-era5-single-levels",
+      "product_type": "reanalysis"
+    }
+  ]
+}
