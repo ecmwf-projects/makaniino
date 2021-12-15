@@ -17,18 +17,18 @@ Makaniino features several functionalities, broadly grouped into 4 categories:
 
 #### 1. Data downloading
 Data can be downloaded using the following command (--help for more details)
-> tc-download <download-config-file.json>
+> mk-download <download-config-file.json>
 
 The schema of the data-download config file can be shown as follows
-> tc-format-download --show
+> mk-format-download --show
 
 #### 2. Data pre-processing
 
 Similarly to data-download, the main data-download command is invoked as follows:
-> tc-preprocess <preprocess-config-file.json>
+> mk-preprocess <preprocess-config-file.json>
  
 The pre-processing configuration file schema can be shown as follows:
-> tc-format-preprocess --show
+> mk-format-preprocess --show
 
 #### 3. Model Training
 
@@ -40,10 +40,10 @@ To train a model the following components need to be selected and configured:
 
 To list all the available concrete components, the following 
 command can be used:
-> tc-format-training-config --show
+> mk-format-training-config --show
 
 Then, to inspect the configuration parameters for a specific component:  
-> tc-format-training-config --show-component=<component-name>
+> mk-format-training-config --show-component=<component-name>
  
 At this point, a complete training configuration can be assembled:
 ```
@@ -65,7 +65,7 @@ At this point, a complete training configuration can be assembled:
         }
 ```
 Finally, to train the model, simply run:
-> tc-train <configuration-file.json>
+> mk-train <configuration-file.json>
  
 Alternatively, the user can write a file "makaniino-components.json" in the working
 directory, where the desired components are listed, e.g.:
@@ -76,9 +76,9 @@ directory, where the desired components are listed, e.g.:
  "trainer": <trainer-name>
 }
 ```
-By invoking the tool *tc-train-from-args*, any available option (from each
+By invoking the tool *mk-train-from-args*, any available option (from each
 component selected) can be overridden by CL arguments:
-> tc-train-from-args
+> mk-train-from-args
 > --tag=&lt;simulation-tag&gt;
 > --&lt;option-1&gt;=&lt;user-choice-1&gt; ...
 
