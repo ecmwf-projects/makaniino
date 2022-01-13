@@ -14,6 +14,6 @@ Install this package
 Test the installation
 > conda activate makaniino_env
 > 
-> tc-version
+> mk-version
 
 Upon correct installation, the code version is printed.
