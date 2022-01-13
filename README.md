@@ -20,7 +20,7 @@ Data can be downloaded using the following command (--help for more details)
 > mk-download <download-config-file.json>
 
 The schema of the data-download config file can be shown as follows
-> mk-format-download --show
+> mk-format-download-config --show
 
 #### 2. Data pre-processing
 
@@ -28,7 +28,7 @@ Similarly to data-download, the main data-download command is invoked as follows
 > mk-preprocess <preprocess-config-file.json>
  
 The pre-processing configuration file schema can be shown as follows:
-> mk-format-preprocess --show
+> mk-format-preprocess-config --show
 
 #### 3. Model Training
 
