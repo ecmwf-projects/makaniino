@@ -1,7 +1,7 @@
-NOAA
+NOAA's Global System Laboratory
 ----
-    Special thanks to NOAA which developed and kindly shared all the algorithms used in
-    this software.
+    Special thanks to NOAA's Global System Laboratory which developed and kindly shared
+    all the algorithms used in this software.
 
 IBTrACS
 -------
