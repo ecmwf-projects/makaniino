@@ -3,6 +3,9 @@
 ## Description
 *Makaniino* builds and trains a Machine-Learning Tropical Cyclone detection model.
 
+### Disclaimer
+This software is still under heavy development and not yet ready for operational use
+
 ### Installation
 
 Please refer to the INSTALL file.
