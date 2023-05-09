@@ -11,8 +11,6 @@
 
 from setuptools import find_packages, setup
 
-#    "tensorflow>=2.2.0",
-
 # required packages
 install_requirements = [
     "packaging==21.0",
@@ -20,7 +18,7 @@ install_requirements = [
     "zarr==2.10.2",
     "mpi4py==3.1.1",
     "keras>=2.4.3",
-    "tensorflow-gpu>=2.2.0",
+    "tensorflow>=2.2.0",
     "horovod>=0.20.2",
     "matplotlib==3.4.3",
     "jsonschema==4.1.2",
