@@ -111,6 +111,7 @@ class TrainerParallel(Trainer):
             for gpu in gpus:
                 tf.config.experimental.set_memory_growth(gpu, True)
             if gpus:
+                print("GPUS in HVD node {hvd.local_rank()} => {gpus}")
                 tf.config.experimental.set_visible_devices(
                     gpus[hvd.local_rank()], "GPU"
                 )
@@ -131,12 +132,8 @@ class TrainerParallel(Trainer):
 
         # optimizer
         opt = hvd.DistributedOptimizer(
-            keras.optimizers.Adam(lr=self.params.learning_rate * hvd.size())
+            self.optimizers_avail[self.params.optimizer](lr=self.params.learning_rate * hvd.size())
         )
-        if self.params.optimizer == "rmsprop":
-            opt = hvd.DistributedOptimizer(
-                keras.optimizers.RMSprop(lr=self.params.learning_rate * hvd.size())
-            )
 
         # compile the model
         keras_model.compile(
@@ -153,7 +150,7 @@ class TrainerParallel(Trainer):
         if self.params.learning_rate_warmup:
             callbacks.append(
                 hvd.callbacks.LearningRateWarmupCallback(
-                    warmup_epochs=5, verbose=verbose
+                    self.params.learning_rate * hvd.size(), warmup_epochs=5, verbose=verbose
                 )
             )
 
@@ -195,7 +192,7 @@ class TrainerParallel(Trainer):
 
         # learning rate schedule callbacks
         lr_callbacks = self._learning_schedule_callbacks(
-            self.params.learning_rate_schedule
+            self.params.learning_rate * hvd.size(), self.params.learning_rate_schedule
         )
         callbacks.extend(lr_callbacks)
 
@@ -236,10 +233,10 @@ class TrainerParallel(Trainer):
         if hvd.rank() == 0:
             self.save_plots()
 
-        hvd.allreduce([0], name="Barrier")
+        #hvd.allreduce([0], name="Barrier")
 
     @staticmethod
-    def _learning_schedule_callbacks(user_string):
+    def _learning_schedule_callbacks(lr_init, user_string):
         """
         Decode user learning schedule string
         and prepare the callbacks
@@ -265,15 +262,15 @@ class TrainerParallel(Trainer):
 
             if start_epoch == -1:
                 _callback = hvd.callbacks.LearningRateScheduleCallback(
-                    end_epoch=end_epoch, multiplier=lr_value
+                    lr_init, end_epoch=end_epoch, multiplier=lr_value
                 )
             elif end_epoch == -1:
                 _callback = hvd.callbacks.LearningRateScheduleCallback(
-                    start_epoch=start_epoch, multiplier=lr_value
+                    lr_init, start_epoch=start_epoch, multiplier=lr_value
                 )
             else:
                 _callback = hvd.callbacks.LearningRateScheduleCallback(
-                    start_epoch=start_epoch, end_epoch=end_epoch, multiplier=lr_value
+                    lr_init, start_epoch=start_epoch, end_epoch=end_epoch, multiplier=lr_value
                 )
 
             lr_callbacks.append(_callback)
